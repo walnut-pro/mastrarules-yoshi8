@@ -1,0 +1,210 @@
+# 事前準備
+access mastraDocs
+
+# ディレクトリ構成
+src/
+  mastra/
+    workflows/
+      index.ts
+    agents/
+      index.ts
+
+
+name: "Deep Research Agent ワークフロー"
+description: "ユーザークエリから深い調査を行うワークフロー"
+
+steps:
+  - id: "userQuery"
+    inputSchema:
+      query: string
+    outputSchema:
+      analyzedQuery: string
+    execute: async ({ context }) => {
+      # ユーザーからの質問受け取り処理
+      return { analyzedQuery: context.query };
+    }
+
+  - id: "activateAgent"
+    inputSchema:
+      analyzedQuery: string
+    outputSchema:
+      activatedAgent: object
+    execute: async ({ context }) => {
+      # Deep Research Agentの起動処理
+      return { activatedAgent: { id: "deep-research", status: "active" } };
+    }
+
+  - id: "planning"
+    inputSchema:
+      analyzedQuery: string
+      activatedAgent: object
+    outputSchema:
+      researchPlan: object
+    execute: async ({ context }) => {
+      # 調査計画の立案
+      return { researchPlan: { steps: [], priorities: [] } };
+    }
+
+  - id: "initialQueryCreation"
+    inputSchema:
+      researchPlan: object
+    outputSchema:
+      searchQueries: string[]
+    execute: async ({ context }) => {
+      # 初期検索クエリの生成
+      return { searchQueries: [] };
+    }
+
+  - id: "webSearch"
+    inputSchema:
+      searchQueries: string[]
+    outputSchema:
+      searchResults: object[]
+    execute: async ({ context }) => {
+      # Web検索の実行
+      return { searchResults: [] };
+    }
+
+  - id: "searchResultAnalysis"
+    inputSchema:
+      searchResults: object[]
+    outputSchema:
+      analyzedResults: object
+    execute: async ({ context }) => {
+      # 検索結果の分析
+      return { analyzedResults: {} };
+    }
+
+  - id: "infoOrganization"
+    inputSchema:
+      analyzedResults: object
+    outputSchema:
+      organizedInfo: object
+    execute: async ({ context }) => {
+      # 情報整理
+      return { organizedInfo: {} };
+    }
+
+  - id: "gapResolutionTool"
+    inputSchema:
+      organizedInfo: object
+    outputSchema:
+      gapAnalysis: object
+    execute: async ({ context }) => {
+      # 情報ギャップの分析と解決ツール実行
+      return { gapAnalysis: { hasGaps: false } };
+    }
+
+  - id: "infoSufficiencyCheck"
+    inputSchema:
+      gapAnalysis: object
+    outputSchema:
+      isSufficient: boolean
+    execute: async ({ context }) => {
+      # 情報の十分性チェック
+      return { isSufficient: context.gapAnalysis.hasGaps ? false : true };
+    }
+
+  - id: "additionalQueryTool"
+    inputSchema:
+      gapAnalysis: object
+    outputSchema:
+      additionalQueries: string[]
+    execute: async ({ context }) => {
+      # 追加クエリの生成
+      return { additionalQueries: [] };
+    }
+
+  - id: "additionalWebSearch"
+    inputSchema:
+      additionalQueries: string[]
+    outputSchema:
+      additionalResults: object[]
+    execute: async ({ context }) => {
+      # 追加Web検索の実行
+      return { additionalResults: [] };
+    }
+
+  - id: "resultAnalysisOrganization"
+    inputSchema:
+      additionalResults: object[]
+      organizedInfo: object
+    outputSchema:
+      updatedInfo: object
+      iterationCount: number
+    execute: async ({ context }) => {
+      # 結果の分析と整理、繰り返し回数の追跡
+      return { 
+        updatedInfo: {},
+        iterationCount: 1 
+      };
+    }
+
+  - id: "maxIterationCheck"
+    inputSchema:
+      iterationCount: number
+    outputSchema:
+      canContinue: boolean
+    execute: async ({ context }) => {
+      # 最大繰り返し回数のチェック
+      const MAX_ITERATIONS = 3;
+      return { canContinue: context.iterationCount < MAX_ITERATIONS };
+    }
+
+  - id: "documentIntegration"
+    inputSchema:
+      organizedInfo: object
+    outputSchema:
+      integratedDocument: object
+    execute: async ({ context }) => {
+      # 文書の統合
+      return { integratedDocument: {} };
+    }
+
+  - id: "finalDocumentCreation"
+    inputSchema:
+      integratedDocument: object
+    outputSchema:
+      finalDocument: object
+    execute: async ({ context }) => {
+      # 最終文書の生成
+      return { finalDocument: {} };
+    }
+
+  - id: "userResponse"
+    inputSchema:
+      finalDocument: object
+    outputSchema:
+      response: string
+    execute: async ({ context }) => {
+      # ユーザーへの応答作成
+      return { response: "" };
+    }
+
+workflow:
+  step: "userQuery"
+  then: "activateAgent"
+  then: "planning"
+  then: "initialQueryCreation"
+  then: "webSearch"
+  then: "searchResultAnalysis"
+  then: "infoOrganization"
+  then: "gapResolutionTool"
+  then: "infoSufficiencyCheck"
+  after: "infoSufficiencyCheck"
+  step: "additionalQueryTool"
+    when: "context.isSufficient === false"
+    then: "additionalWebSearch"
+    then: "resultAnalysisOrganization"
+    then: "maxIterationCheck"
+    after: "maxIterationCheck"
+    step: "gapResolutionTool"
+      when: "context.canContinue === true"
+  after: "infoSufficiencyCheck"
+  step: "documentIntegration"
+    when: "context.isSufficient === true"
+    then: "finalDocumentCreation"
+    then: "userResponse"
+  after: "maxIterationCheck"
+  step: "documentIntegration" 
+    when: "context.canContinue === false"
